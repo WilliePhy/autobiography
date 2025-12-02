@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高中學測 7000 單字特訓</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --success: #2ECC71;
+            --error: #E74C3C;
+            --bg: #F5F7FA;
+            --card-bg: #FFFFFF;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .progress {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        /* Quiz Section */
+        .word-display {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .the-word {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+
+        .sentence-box {
+            background-color: #f0f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            border-left: 5px solid var(--primary);
+        }
+
+        .sentence-en {
+            font-size: 1.1em;
+            color: #2c3e50;
+            line-height: 1.5;
+        }
+
+        .sentence-zh {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #555;
+            display: none; /* Hidden by default */
+            border-top: 1px dashed #ccc;
+            padding-top: 8px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        button.option-btn {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        button.option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #f0f8ff;
+        }
+
+        button.option-btn.correct {
+            background-color: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        button.option-btn.wrong {
+            background-color: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .next-btn {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            display: none; /* Hidden until answered */
+        }
+
+        /* Result Section */
+        #result-screen {
+            display: none;
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 3em;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .review-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+
+        .review-word {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .review-meaning {
+            color: #666;
+        }
+
+        @media (max-width: 500px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="quiz-screen">
+        <h1>學測單字特訓</h1>
+        <div class="progress">Question <span id="current-q">1</span> / 10</div>
+        
+        <div class="word-display">
+            <div class="the-word" id="word-text">Vocabulary</div>
+        </div>
+
+        <div class="sentence-box">
+            <div class="sentence-en" id="sentence-en">Loading sentence...</div>
+            <div class="sentence-zh" id="sentence-zh">Loading translation...</div>
+        </div>
+
+        <div class="options-grid" id="options-area">
+            </div>
+
+        <button class="next-btn" id="next-btn" onclick="nextQuestion()">下一題 (Next)</button>
+    </div>
+
+    <div id="result-screen">
+        <h1>測驗結果</h1>
+        <div class="score-display" id="final-score">100</div>
+        <p style="text-align: center;">本次測驗單字列表：</p>
+        <div class="review-list" id="review-list">
+            </div>
+        <button class="next-btn" style="display:block; margin-top:20px;" onclick="location.reload()">再測驗一次</button>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 1. 單字資料庫 (在此處擴充單字)
+    // 格式: { word: "英文", mean: "中文意思", s_en: "英文例句", s_zh: "例句中譯" }
+    // ==========================================
+    const wordDatabase = [
+        { word: "abundant", mean: "豐富的；大量的", s_en: "We have an abundant supply of food for the winter.", s_zh: "我們有充足的食物儲備過冬。" },
+        { word: "accommodate", mean: "容納；為...提供住宿", s_en: "The hotel can accommodate up to 500 guests.", s_zh: "這家飯店最多可容納500位客人。" },
+        { word: "accumulate", mean: "累積；積聚", s_en: "Dust tends to accumulate if you don't clean regularly.", s_zh: "如果你不定期打掃，灰塵往往會堆積。" },
+        { word: "acknowledge", mean: "承認；認可", s_en: "He refused to acknowledge his mistake.", s_zh: "他拒絕承認他的錯誤。" },
+        { word: "ambiguous", mean: "模稜兩可的；曖昧的", s_en: "The ending of the movie was quite ambiguous.", s_zh: "這部電影的結局相當模稜兩可。" },
+        { word: "anticipate", mean: "預期；期望", s_en: "We don't anticipate any major problems.", s_zh: "我們預計不會有什麼大問題。" },
+        { word: "appropriate", mean: "適當的", s_en: "Is this dress appropriate for a job interview?", s_zh: "這件洋裝適合穿去面試嗎？" },
+        { word: "beneficial", mean: "有益的", s_en: "Regular exercise is beneficial to your health.", s_zh: "規律運動對你的健康有益。" },
+        { word: "coincide", mean: "同時發生；巧合", s_en: "My birthday coincides with a national holiday.", s_zh: "我的生日剛好遇上國定假日。" },
+        { word: "commitment", mean: "承諾；投入", s_en: "Starting a business requires a long-term commitment.", s_zh: "創業需要長期的投入。" },
+        { word: "comprehensive", mean: "全面的；詳盡的", s_en: "The school offers a comprehensive curriculum.", s_zh: "這所學校提供全面的課程。" },
+        { word: "conscience", mean: "良心", s_en: "His conscience troubled him after he told the lie.", s_zh: "說謊之後，他的良心感到不安。" },
+        { word: "consistent", mean: "始終如一的；一致的", s_en: "You need to be consistent in your studies to improve.", s_zh: "你需要持之以恆地學習才能進步。" },
+        { word: "contradict", mean: "反駁；與...矛盾", s_en: "The evidence contradicts his testimony.", s_zh: "證據與他的證詞相矛盾。" },
+        { word: "deliberate", mean: "故意的；深思熟慮的", s_en: "It was a deliberate attempt to hide the truth.", s_zh: "那是故意隱瞞真相的企圖。" },
+        { word: "deteriorate", mean: "惡化", s_en: "The patient's condition began to deteriorate rapidly.", s_zh: "病人的狀況開始迅速惡化。" },
+        { word: "distinct", mean: "明顯的；獨特的", s_en: "There is a distinct smell of gas in the kitchen.", s_zh: "廚房裡有一股明顯的瓦斯味。" },
+        { word: "elaborate", mean: "精細的；詳盡闡述", s_en: "Please elaborate on your proposal.", s_zh: "請詳盡說明你的提案。" },
+        { word: "emphasize", mean: "強調", s_en: "The teacher emphasized the importance of punctuality.", s_zh: "老師強調了守時的重要性。" },
+        { word: "enthusiasm", mean: "熱忱；熱情", s_en: "She showed great enthusiasm for the new project.", s_zh: "她對這個新專案展現了極大的熱忱。" },
+        { word: "exaggerate", mean: "誇張；誇大", s_en: "Don't exaggerate the difficulty of the task.", s_zh: "不要誇大這項任務的困難度。" },
+        { word: "flexible", mean: "彈性的；靈活的", s_en: "My schedule is quite flexible this week.", s_zh: "這週我的行程很有彈性。" },
+        { word: "guarantee", mean: "保證", s_en: "This product comes with a two-year guarantee.", s_zh: "這項產品有兩年的保固。" },
+        { word: "hypothesis", mean: "假設", s_en: "The results of the experiment support the hypothesis.", s_zh: "實驗結果支持了這個假設。" },
+        { word: "inevitable", mean: "不可避免的", s_en: "Change is inevitable in life.", s_zh: "生活中改變是不可避免的。" },
+        { word: "miserable", mean: "悲慘的；痛苦的", s_en: "The cold rain made the weather miserable.", s_zh: "冰冷的雨讓天氣變得令人難受。" },
+        { word: "negotiate", mean: "談判；協商", s_en: "We need to negotiate a better deal.", s_zh: "我們需要談成一筆更好的交易。" },
+        { word: "obstacle", mean: "障礙", s_en: "Fear of failure is the biggest obstacle to success.", s_zh: "害怕失敗是成功最大的障礙。" },
+        { word: "potential", mean: "潛在的；潛力", s_en: "She has the potential to become a great artist.", s_zh: "她有成為偉大藝術家的潛力。" },
+        { word: "prominent", mean: "顯著的；傑出的", s_en: "He is a prominent figure in the local community.", s_zh: "他是當地社區的傑出人物。" }
+    ];
+
+    // ==========================================
+    // 2. 程式邏輯區
+    // ==========================================
+    
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let isAnswered = false;
+
+    // 初始化測驗
+    function initQuiz() {
+        // 隨機選 10 題
+        const shuffled = [...wordDatabase].sort(() => 0.5 - Math.random());
+        currentQuestions = shuffled.slice(0, 10);
+        
+        currentIndex = 0;
+        score = 0;
+        showQuestion();
+    }
+
+    // 顯示題目
+    function showQuestion() {
+        isAnswered = false;
+        const qData = currentQuestions[currentIndex];
+        
+        // 更新 UI
+        document.getElementById('current-q').textContent = currentIndex + 1;
+        document.getElementById('word-text').textContent = qData.word;
+        document.getElementById('sentence-en').textContent = qData.s_en;
+        
+        // 隱藏翻譯與下一題按鈕
+        document.getElementById('sentence-zh').style.display = 'none';
+        document.getElementById('sentence-zh').textContent = qData.s_zh;
+        document.getElementById('next-btn').style.display = 'none';
+
+        // 生成選項 (1個正確 + 3個錯誤)
+        let options = [qData];
+        let distractors = wordDatabase.filter(w => w.word !== qData.word);
+        // 隨機選3個錯誤選項
+        distractors.sort(() => 0.5 - Math.random());
+        options = options.concat(distractors.slice(0, 3));
+        // 打亂選項順序
+        options.sort(() => 0.5 - Math.random());
+
+        const optionsArea = document.getElementById('options-area');
+        optionsArea.innerHTML = ''; // 清空舊選項
+
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.textContent = opt.mean;
+            btn.onclick = () => checkAnswer(btn, opt.word === qData.word);
+            optionsArea.appendChild(btn);
+        });
+    }
+
+    // 檢查答案
+    function checkAnswer(selectedBtn, isCorrect) {
+        if (isAnswered) return; // 防止重複點擊
+        isAnswered = true;
+
+        const btns = document.querySelectorAll('.option-btn');
+        
+        if (isCorrect) {
+            selectedBtn.classList.add('correct');
+            score += 10;
+        } else {
+            selectedBtn.classList.add('wrong');
+            // 標示出正確答案
+            btns.forEach(btn => {
+                if (btn.textContent === currentQuestions[currentIndex].mean) {
+                    btn.classList.add('correct');
+                }
+            });
+        }
+
+        // 鎖定所有按鈕
+        btns.forEach(btn => btn.disabled = true);
+
+        // 顯示例句翻譯與下一題按鈕
+        document.getElementById('sentence-zh').style.display = 'block';
+        document.getElementById('next-btn').style.display = 'block';
+
+        // 如果是最後一題，按鈕文字改為看結果
+        if (currentIndex === 9) {
+            document.getElementById('next-btn').textContent = "查看結果 (Finish)";
+        } else {
+            document.getElementById('next-btn').textContent = "下一題 (Next)";
+        }
+    }
+
+    // 下一題
+    function nextQuestion() {
+        if (currentIndex < 9) {
+            currentIndex++;
+            showQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    // 顯示結果
+    function showResults() {
+        document.getElementById('quiz-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('final-score').textContent = score;
+
+        const list = document.getElementById('review-list');
+        list.innerHTML = '';
+
+        currentQuestions.forEach((q, index) => {
+            const item = document.createElement('div');
+            item.className = 'review-item';
+            item.innerHTML = `
+                <div class="review-word">${index + 1}. ${q.word} <span style="font-weight:normal; font-size:0.9em;">(${q.mean})</span></div>
+                <div class="review-meaning" style="font-size:0.85em; margin-top:4px;">${q.s_en}</div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    // 啟動程式
+    initQuiz();
+
+</script>
+
+</body>
+</html>
